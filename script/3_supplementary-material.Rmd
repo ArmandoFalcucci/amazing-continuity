@@ -1,0 +1,598 @@
+---
+title: "Supplementary Material for __Amazing continuity of mining technology in the southern African Stone Age__"
+author: "Armando Falcucci, Gunther H. D. Möller, Julia Becher, Bob Forrester, Gregor D. Bader"
+knit: (function(input, ...) {
+    rmarkdown::render(
+      input,
+      output_dir = "../output"
+    )
+  })
+date: ""
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r, echo=FALSE, warning=FALSE, message=FALSE, include=FALSE}
+# Packages used
+library(tidyverse)
+library(readxl)
+library(geomorph)
+library(Morpho)
+library(janitor)
+library(kableExtra)
+library(rstatix)
+library(MetBrewer)
+library(ggplot2)
+library(ggpubr)
+library(vegan)
+library(FactoMineR)
+library(factoextra)
+library(cowplot)
+library(dispRity)
+library(flextable)
+library(cowplot)
+library(corrplot)
+
+# Merging datasets ####
+lion.cavern <- read_excel("../data/Lion.Cavern.xlsx")
+
+castle.cavern <- read_excel("../data/Castle.Cavern.xlsx")
+
+datasets.binded <- rbind(lion.cavern, castle.cavern)
+
+dataset <- read_excel("../data/LC-CC_general.xlsx")
+
+dataset.volume <- read.csv("../data/LC-CC_volume-area.csv")
+
+dataset <- left_join(dataset, datasets.binded, by = "ID")
+
+dataset <- dataset %>%
+  mutate(raw.material = recode(raw.material, `Granite?Dolerite?` = "Undetermined", `sandstone?` = "Undetermined", `Shale? Gneis? Grünschiefer` = "Undetermined", `Wethered Dolerite?` = "Undetermined", `volcanic?` = "Undetermined", `Shale/Slate` = "Shale", `Shale/Shist` = "Shale")) %>%
+  mutate(period = recode(period, late.final.MSA = "early.final.MSA"))
+
+dataset$robustness <- dataset$width / dataset$thickness
+
+dataset$elongation <- dataset$length / dataset$width
+
+dataset <- left_join(dataset, dataset.volume, by = "ID")
+
+dataset$LogVolume <- log10(dataset$volume)
+
+dataset$LogRobustness <- log10(dataset$robustness)
+
+comparison <- list(c("Early Iron Age", "Iron.Age_ceramic.LSA"), c("Early Iron Age", "LSA"), c("Early Iron Age", "final.MSA"), c("Early Iron Age", "early.final.MSA"), c("Iron.Age_ceramic.LSA", "LSA"), c("Iron.Age_ceramic.LSA", "final.MSA"), c("Iron.Age_ceramic.LSA", "early.final.MSA"), c("LSA", "final.MSA"), c("LSA", "early.final.MSA"), c("final.MSA", "early.final.MSA"))
+
+comparison.2 <- list(c("Castle Cavern (Iron Age)", "Iron.Age_ceramic.LSA"), c("Castle Cavern (Iron Age)", "LSA"), c("Castle Cavern (Iron Age)", "final.MSA"), c("Castle Cavern (Iron Age)", "early.final.MSA"), c("Iron.Age_ceramic.LSA", "LSA"), c("Iron.Age_ceramic.LSA", "final.MSA"), c("Iron.Age_ceramic.LSA", "early.final.MSA"), c("LSA", "final.MSA"), c("LSA", "early.final.MSA"), c("final.MSA", "early.final.MSA"))
+
+comparison.reduced <- list(c("Iron Age", "LSA"), c("Iron Age", "MSA"), c("LSA", "MSA"))
+
+```
+
+```{r, echo=FALSE, include=FALSE,warning=FALSE, message=FALSE} 
+dataset.pca <- dataset %>%
+            mutate(period = fct_recode(period, 
+                             "early Iron Age" = "Early Iron Age", 
+                             "ceramic LSA" = "Iron.Age_ceramic.LSA", 
+                             "LSA" = "LSA", 
+                             "late final MSA" = "final.MSA", 
+                             "early final MSA" = "early.final.MSA")) %>%
+  mutate(period = fct_relevel(period, "early Iron Age", "ceramic LSA", "LSA", "late final MSA", "early final MSA")) %>%
+  rename ("Phase" = period) %>%
+  filter(leave.out == "no") %>%
+  select(Site, Phase, raw.material, volume, area, length, width, thickness,width.lower, width.upper, thickness.lower, thickness.upper, elongation, robustness) %>%
+  na.omit() %>%
+  mutate(across(c(raw.material),
+                ~ fct_lump(factor(.), prop = 0.05, other_level = "Other"))) %>%
+  mutate(raw.material = recode(raw.material, "Undetermined" = "Other"))
+
+#3 PCA in the FactoMineR package ####
+PCA.size <- FactoMineR::PCA(dataset.pca, ncp = 15, quali.sup=1:3, scale.unit = T, graph = F)
+
+```
+
+```{r, echo=FALSE, warning=FALSE, include=FALSE, message=FALSE} 
+
+dimdesc_PCA_measurements <- dimdesc(PCA.size, axes=c(1:3))
+print(dimdesc_PCA_measurements)
+
+PC.scores.size <- as.data.frame(PCA.size$ind$coord)
+
+dataset.PCA.size <- dataset %>%
+  filter(leave.out != "yes")
+
+dataset.PCA.size <- cbind(dataset.PCA.size, PC.scores.size) 
+
+```
+
+```{r, echo=FALSE, include=FALSE, warning=FALSE, message=FALSE}
+load("../data/ar_data.RData")
+
+GM.morpho <- procSym(ar)
+
+GM.morpho.size <- procSym(ar, sizeshape = TRUE)
+
+PC.scores.GM <- as.data.frame(GM.morpho$PCscores)
+
+centroid.size.GM <- as.data.frame(GM.morpho$rho) %>%
+  rename("centroid.size" = `GM.morpho$rho`) 
+
+dataset.GM <- dataset %>%
+  filter(leave.out != "yes")
+
+dataset.GM <- cbind(dataset.GM, PC.scores.GM, centroid.size.GM)
+
+dataset.GM$LogCS <- log10(dataset.GM$centroid.size)
+
+PC.scores.GM.size <- as.data.frame(GM.morpho.size$PCscores)
+
+centroid.size.GM.size <- as.data.frame(GM.morpho.size$rho) %>%
+  rename("centroid.size" = `GM.morpho.size$rho`) 
+
+dataset.GM.size <- dataset %>%
+  filter(leave.out != "yes")
+
+dataset.GM.size <- cbind(dataset.GM.size, PC.scores.GM.size, centroid.size.GM.size)
+```
+
+<br>
+
+## Supplementary Figures
+
+### Figure S1
+
+```{r, echo=FALSE, warning=FALSE, fig.align='center'}
+width <- dataset %>%
+        mutate(period = fct_recode(period, 
+                             "early Iron Age" = "Early Iron Age", 
+                             "ceramic LSA" = "Iron.Age_ceramic.LSA", 
+                             "LSA" = "LSA", 
+                             "late final MSA" = "final.MSA", 
+                             "early final MSA" = "early.final.MSA")) %>%
+  mutate(period = fct_relevel(period, "early Iron Age", "ceramic LSA", "LSA", "late final MSA", "early final MSA")) %>%
+  rename ("Phase" = period) %>%
+  mutate(period = recode(Phase, `early Iron Age` = "Castle Cavern (early Iron Age)")) %>%
+  filter(leave.out == "no") %>%
+  ggplot(aes(x = Phase, y = width)) +
+  geom_boxplot(aes(fill = Phase), alpha = 0.7) +
+  geom_jitter(position = position_jitter (width = 0.2), size = 1.5, alpha = 0.6, aes(color = Phase), show.legend = FALSE) +
+  ggthemes::theme_clean() +
+  scale_fill_manual(values=met.brewer("Tiepolo", 5)) +
+  scale_color_manual(values=met.brewer("Tiepolo", 5)) +
+  scale_x_discrete(guide = guide_axis(n.dodge = 2)) +
+  theme(text = element_text(size = 14),
+        axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12),
+        legend.position = "none") +
+  labs(y= "Width (mm)")
+
+thickness <- dataset %>%
+        mutate(period = fct_recode(period, 
+                             "early Iron Age" = "Early Iron Age", 
+                             "ceramic LSA" = "Iron.Age_ceramic.LSA", 
+                             "LSA" = "LSA", 
+                             "late final MSA" = "final.MSA", 
+                             "early final MSA" = "early.final.MSA")) %>%
+  mutate(period = fct_relevel(period, "early Iron Age", "ceramic LSA", "LSA", "late final MSA", "early final MSA")) %>%
+  rename ("Phase" = period) %>%
+  mutate(period = recode(Phase, `early Iron Age` = "Castle Cavern (early Iron Age)")) %>%
+  filter(leave.out == "no") %>%
+  ggplot(aes(x = Phase, y = thickness)) +
+  geom_boxplot(aes(fill = Phase), alpha = 0.7) +
+  geom_jitter(position = position_jitter (width = 0.2), size = 1.5, alpha = 0.6, aes(color = Phase), show.legend = FALSE) +
+  ggthemes::theme_clean() +
+  scale_fill_manual(values=met.brewer("Tiepolo", 5)) +
+  scale_color_manual(values=met.brewer("Tiepolo", 5)) +
+  scale_x_discrete(guide = guide_axis(n.dodge = 2)) +
+  theme(text = element_text(size = 14),
+        axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12),
+        legend.position = "none") +
+  labs(y= "Thickness (mm)")
+
+ggarrange(width, thickness,
+          labels = c("a", "b"), nrow=1)
+```
+  **Figure S1.** Boxplots with jittered points comparing width (mm) and thickness (mm) across chronological phases at Castle Cavern and Lion Cavern.
+
+<br>
+
+### Figure S2
+
+```{r, echo=FALSE, warning=FALSE, fig.align='center'}
+robustness <- dataset %>%
+        mutate(period = fct_recode(period, 
+                             "early Iron Age" = "Early Iron Age", 
+                             "Ceramic LSA" = "Iron.Age_ceramic.LSA", 
+                             "LSA" = "LSA", 
+                             "late final MSA" = "final.MSA", 
+                             "early final MSA" = "early.final.MSA")) %>%
+  mutate(period = fct_relevel(period, "early Iron Age", "Ceramic LSA", "LSA", "late final MSA", "early final MSA")) %>%
+  rename ("Phase" = period) %>%
+  mutate(period = recode(Phase, `early Iron Age` = "Castle Cavern (early Iron Age)")) %>%
+  filter(leave.out == "no") %>%
+  ggplot(aes(x = Phase, y = robustness)) +
+  geom_boxplot(aes(fill = Phase), alpha = 0.7) +
+  geom_jitter(position = position_jitter (width = 0.2), size = 1.5, alpha = 0.6, aes(color = Phase), show.legend = FALSE) +
+  ggthemes::theme_clean() +
+  scale_color_manual(values=met.brewer("Tiepolo", 5)) +
+  scale_fill_manual(values=met.brewer("Tiepolo", 5)) +
+  scale_x_discrete(guide = guide_axis(n.dodge = 2)) +
+  theme(text = element_text(size = 14),
+        axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12),
+        legend.position = "none") +
+  labs(y= "Robustness")
+
+
+elongation <- dataset %>%
+        mutate(period = fct_recode(period, 
+                             "early Iron Age" = "Early Iron Age", 
+                             "Ceramic LSA" = "Iron.Age_ceramic.LSA", 
+                             "LSA" = "LSA", 
+                             "late final MSA" = "final.MSA", 
+                             "early final MSA" = "early.final.MSA")) %>%
+  mutate(period = fct_relevel(period, "early Iron Age", "Ceramic LSA", "LSA", "late final MSA", "early final MSA")) %>%
+  rename ("Phase" = period) %>%
+  mutate(period = recode(Phase, `early Iron Age` = "Castle Cavern (early Iron Age)")) %>%
+  filter(leave.out == "no") %>%
+  ggplot(aes(x = Phase, y = elongation)) +
+  geom_boxplot(aes(fill = Phase), alpha = 0.7) +
+  geom_jitter(position = position_jitter (width = 0.2), size = 1.5, alpha = 0.6, aes(color = Phase), show.legend = FALSE) +
+  ggthemes::theme_clean() +
+  scale_fill_manual(values=met.brewer("Tiepolo", 5)) +
+  scale_color_manual(values=met.brewer("Tiepolo", 5)) +
+  scale_x_discrete(guide = guide_axis(n.dodge = 2)) +
+  theme(text = element_text(size = 14),
+        axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12),
+        legend.position = "none") +
+  labs(y= "Elongation")
+
+
+ggarrange(robustness, elongation,
+          labels = c("a", "b"), nrow=1)
+```
+  **Figure S2.** Boxplots with jittered points comparing robustness and elongation across chronological phases at Castle Cavern and Lion Cavern.
+
+<br>
+
+### Figure S3
+```{r, echo=FALSE, warning=FALSE, fig.align='center'}
+dataset %>%
+          mutate(period = fct_recode(period, 
+                             "early Iron Age" = "Early Iron Age", 
+                             "Ceramic LSA" = "Iron.Age_ceramic.LSA", 
+                             "LSA" = "LSA", 
+                             "late final MSA" = "final.MSA", 
+                             "early final MSA" = "early.final.MSA")) %>%
+  mutate(period = fct_relevel(period, "early Iron Age", "Ceramic LSA", "LSA", "late final MSA", "early final MSA")) %>%
+  mutate(period = recode(period, `early Iron Age` = "Castle Cavern (early Iron Age)")) %>%
+  rename ("Phase" = period, "Raw material" = raw.material) %>%
+  filter(leave.out == "no") %>%
+  filter(`Raw material` == "Dolerite" | `Raw material` == "Shale") %>%
+  ggplot(aes(x = Phase, y = log10(volume))) +
+  geom_boxplot(aes(fill = `Raw material`)) +
+  ggthemes::theme_clean() +
+  scale_fill_manual(values=met.brewer("Lakota")) +
+  scale_x_discrete(guide = guide_axis(n.dodge = 2)) +
+  theme(text = element_text(size = 18),
+        axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        legend.position = "bottom") +
+  labs(y= "LogVolume") + 
+   stat_compare_means(aes(group = `Raw material`), label = "p.format", method = "wilcox.test")
+```
+  **Figure S3.** Comparison of logarithmically transformed log-volume (LogVolume) values sorted according to chronological phase and the most common raw materials (i.e., dolerite and shale).
+
+<br>
+
+### Figure S4
+```{r, echo=FALSE, warning=FALSE, fig.align='center'}
+dataset %>%
+          mutate(period = fct_recode(period, 
+                             "early Iron Age" = "Early Iron Age", 
+                             "Ceramic LSA" = "Iron.Age_ceramic.LSA", 
+                             "LSA" = "LSA", 
+                             "late final MSA" = "final.MSA", 
+                             "early final MSA" = "early.final.MSA")) %>%
+  mutate(period = fct_relevel(period, "early Iron Age", "Ceramic LSA", "LSA", "late final MSA", "early final MSA")) %>%
+  mutate(period = recode(period, `early Iron Age` = "Castle Cavern (early Iron Age)")) %>%
+  rename ("Phase" = period, "Raw material" = raw.material) %>%
+  filter(leave.out == "no") %>%
+  filter(`Raw material` == "Dolerite" | `Raw material` == "Shale") %>%
+  ggplot(aes(x = Phase, y = length)) +
+  geom_boxplot(aes(fill = `Raw material`)) +
+  ggthemes::theme_clean() +
+  scale_fill_manual(values=met.brewer("Lakota")) +
+  scale_x_discrete(guide = guide_axis(n.dodge = 2)) +
+  theme(text = element_text(size = 18),
+        axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        legend.position = "bottom") +
+  labs(y= "Length (mm)") + 
+   stat_compare_means(aes(group = `Raw material`), label = "p.format", method = "wilcox.test")
+```
+  **Figure S4.** Comparison of length values (in mm) sorted according to chronological phase and the most common raw materials (i.e., dolerite and shale).
+
+<br>
+
+### Figure S5
+```{r, echo=FALSE, warning=FALSE, fig.align='center'}
+dataset %>%
+          mutate(period = fct_recode(period, 
+                             "early Iron Age" = "Early Iron Age", 
+                             "ceramic LSA" = "Iron.Age_ceramic.LSA", 
+                             "LSA" = "LSA", 
+                             "late final MSA" = "final.MSA", 
+                             "early final MSA" = "early.final.MSA")) %>%
+  mutate(period = fct_relevel(period, "early Iron Age", "ceramic LSA", "LSA", "late final MSA", "early final MSA")) %>%
+  mutate(period = recode(period, `early Iron Age` = "Castle Cavern (early Iron Age)")) %>%
+  rename ("Phase" = period, "Raw material" = raw.material) %>%
+  filter(leave.out == "no") %>%
+  filter(`Raw material` == "Dolerite" | `Raw material` == "Shale") %>%
+  ggplot(aes(x = Phase, y = width)) +
+  geom_boxplot(aes(fill = `Raw material`)) +
+  ggthemes::theme_clean() +
+  scale_fill_manual(values=met.brewer("Lakota")) +
+  scale_x_discrete(guide = guide_axis(n.dodge = 2)) +
+  theme(text = element_text(size = 18),
+        axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        legend.position = "bottom") +
+  labs(y= "Width (mm)") + 
+   stat_compare_means(aes(group = `Raw material`), label = "p.format", method = "wilcox.test")
+```
+  **Figure S5.** Comparison of width values (in mm) sorted according to chronological phase and the most common raw materials (i.e., dolerite and shale).
+
+<br>
+
+### Figure S6
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+corrplot(PCA.size$var$contrib, 
+         is.corr = FALSE, 
+         method = "color", 
+         col = colorRampPalette(c("blue", "red"))(200), 
+         title = "",
+         tl.col = "black",
+         cl.col = "black")
+```
+  **Figure S6.** Heatmap showing the contribution of each variable to the dimensions (Dim1-Dim11) in the PCA of metric variables, with higher contributions indicated by warmer colors.
+
+<br>
+
+### Figure S7
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+factoextra::fviz_pca_ind(PCA.size,
+             axes=c(1, 3), label="none",
+             addEllipses=T, ellipse.type="confidence",
+             habillage=c(2), pointsize=3, labelsize=10, repel=T,
+            col.var = "red",
+             ggtheme = theme(text=element_text(size=16),
+                             axis.title = element_text(size=16),
+                             axis.text = element_text(size=14)),
+             legend.title=element_text("Phase")) +
+  scale_fill_manual(values=met.brewer("Tiepolo", 5)) +
+  scale_color_manual(values=met.brewer("Tiepolo", 5)) +
+  labs(x="PC1 (47.2%)", y="PC3 (13.7%)") +
+  theme_minimal_grid() +
+  theme(plot.title = element_blank()) +
+  theme(plot.title = element_blank(),
+        text=element_text(size=14),
+        axis.title = element_text(size=14),
+        axis.text = element_text(size=14))
+```
+  **Figure S7.** Distribution of the mining tools in the PC1 to PC3 space, sorted according to chronological phase.
+
+<br>
+
+### Figure S8
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+factoextra::fviz_pca_ind(PCA.size,
+             axes=c(1, 2), label="none",
+             addEllipses=T, ellipse.type="confidence",
+             habillage=c(3), pointsize=3, labelsize=10, repel=T,
+            col.var = "red",
+             ggtheme = theme(text=element_text(size=16),
+                             axis.title = element_text(size=16),
+                             axis.text = element_text(size=14)),
+             legend.title=element_text("Phase")) +
+  scale_fill_manual(values=met.brewer("Tiepolo", 5)) +
+  scale_color_manual(values=met.brewer("Tiepolo", 5)) +
+  labs(x="PC1 (47.2%)", y="PC2 (21.6%)") +
+  theme_minimal_grid() +
+  theme(plot.title = element_blank()) +
+  theme(plot.title = element_blank(),
+        text=element_text(size=14),
+        axis.title = element_text(size=14),
+        axis.text = element_text(size=14))
+```
+  **Figure S8.** Distribution of the mining tools in the PC1 to PC3 space, sorted according to raw material type.
+
+<br>
+
+### Figure S9
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+variance_explained <- GM.morpho$eigenvalues / sum(GM.morpho$eigenvalues) * 100
+
+scree_data <- data.frame(
+  PC = paste0("PC", 1:length(variance_explained)),
+  Variance_Explained = variance_explained
+)
+
+scree_data <- scree_data[1:10, ]
+
+scree_data$PC <- factor(scree_data$PC, levels = scree_data$PC)
+
+ggplot(scree_data, aes(x = PC, y = Variance_Explained)) +
+  geom_bar(stat = "identity", fill = "darkred", alpha = 0.8) +
+  geom_text(aes(label = paste0(round(Variance_Explained, 1), "%")), 
+            vjust = -0.5, size = 4) +
+  labs(title = "",
+       x = "Principal Components",
+       y = "Percentage of variance explained") +
+  scale_y_continuous(limits = c(0, 42)) +
+  theme_minimal()
+```
+  **Figure S9.** Scree plot dispaying the percentage of variance explained by the first ten principal components of the 3DGM analysis.
+
+<br>
+
+### Figure S10
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+dataset.GM.RawMat <- dataset.GM %>%
+  dplyr::filter(raw.material %in% c("Dolerite", "Shale"))
+
+dataset.GM <- dataset.GM %>%
+  mutate(across(c(raw.material),
+                 ~ fct_lump(factor(.), prop = 0.05, other_level = "Other"))) %>%
+  mutate(raw.material = recode(raw.material, `Undetermined` = "Other"))
+
+
+dataset.GM.RawMat %>%
+  ggplot(aes(x = PC1, y = PC2, color = raw.material)) +
+  geom_point(size = 3) +
+  stat_ellipse(aes(color = raw.material, fill = raw.material), level = 0.80, alpha = 0.3, geom = "polygon") +
+  scale_fill_manual(values = met.brewer("Lakota")) +
+  scale_color_manual(values = met.brewer("Lakota")) +
+  labs(x = "PC1 (40.6%)", y = "PC2 (13.5%)") +
+  geom_hline(yintercept = 0, 
+             linetype = "dashed", 
+             color = "black",
+             size = 0.5, 
+             alpha = 0.5) +
+  geom_vline(xintercept = 0, 
+             linetype = "dashed", 
+             color = "black",
+             size = 0.5, 
+             alpha = 0.5) +
+  geom_point(data = dataset.GM.RawMat %>%
+               group_by(raw.material) %>%
+               summarise(mean_PC1 = mean(PC1), mean_PC2 = mean(PC2), .groups = "drop"), 
+             aes(x = mean_PC1, y = mean_PC2, color = raw.material), 
+             size = 5, shape = 17) +
+  theme(legend.position = "bottom",
+        legend.title = element_blank(),
+        legend.text = element_text(size = 14),
+        axis.title.x = element_text(size = 16),
+        axis.title.y = element_text(size = 16),
+        axis.text = element_text(size = 12, face = "bold"))
+```
+  **Figure S10.** PCA biplot showing the shape variability of the mining tools along PC1 and PC2, sorted by the most common raw materials (dolerite and shale). Mean values are represented by triangles, and the confidence ellipses correspond to 80% of the variability.
+
+<br>
+
+## Supplementary Tables
+
+### Table S1
+
+```{r, echo=FALSE, warning=FALSE}
+dataset %>%
+  mutate(period = fct_recode(period, 
+                             "early Iron Age" = "Early Iron Age", 
+                             "Ceramic LSA" = "Iron.Age_ceramic.LSA", 
+                             "LSA" = "LSA", 
+                             "late final MSA" = "final.MSA", 
+                             "early final MSA" = "early.final.MSA")) %>%
+  mutate(period = fct_relevel(period, "early Iron Age", "Ceramic LSA", "LSA", "late final MSA", "early final MSA")) %>%
+  rename ("Phase" = period) %>%
+  mutate(Phase = recode(Phase, `early Iron Age` = "Castle Cavern (early Iron Age)")) %>%
+  filter(leave.out == "no") %>%
+  group_by(Phase) %>%
+  get_summary_stats(volume, length, width, thickness, show = c("mean", "sd", "min", "median", "max")) %>%
+  mutate(across(c(mean, sd, min, median, max), ~ round(.x, 1))) %>%
+  flextable() %>%
+  theme_vanilla() %>%
+  set_table_properties(layout = "autofit") %>%
+  autofit()
+```
+  **Table S1.** Descriptive statistics for artifact dimensions across the chronological phases at Castle Cavern and Lion Cavern. All measurements are rounded to one decimal place. sd = standard deviation.
+
+<br>
+
+### Table S2
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+dataset.GM.biplot <- dataset.GM %>%
+  mutate(period = recode(period, 
+                         "Early Iron Age" = "Early Iron Age", 
+                         "Iron.Age_ceramic.LSA" = "Ceramic LSA", 
+                         "LSA" = "LSA", 
+                         "final.MSA" = "Late final MSA", 
+                         "early.final.MSA" = "Early final MSA")) %>%
+  mutate(period = factor(period, 
+                         levels = c("Early Iron Age", "Ceramic LSA", "LSA", "Late final MSA", "Early final MSA")))
+
+
+rownames_DATASETS <-as.factor(dataset.GM.biplot$period)
+
+PC.data.subset.GM <- select(dataset.GM.biplot, "PC1":"PC16")
+
+data_subsets <- custom.subsets(PC.data.subset.GM, 
+                               group = rownames_DATASETS)
+
+data_boot <- boot.matrix(data_subsets, bootstraps = 1000)
+
+data_disp <- dispRity(data_boot, metric = c(sum, variances))
+
+pairwise_results.disparity.shape <- test.dispRity(data_disp,
+              test = wilcox.test, 
+              comparisons = "pairwise",
+              correction = "bonferroni")
+
+disparity.shape.formatted_results <- as.data.frame(pairwise_results.disparity.shape)
+disparity.shape.formatted_results <- disparity.shape.formatted_results %>%
+  mutate(p.value = format.pval(p.value, digits = 3))  # Format p-values
+
+disparity.shape.formatted_results %>%
+  kable("html", caption = "Wilcoxon Pairwise Tests") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+  **Table S2.** Results of the Wilcoxon rank-sum test for pairwise comparisons of morphological disparity (measured as the sum of variances) among the chronological phases.
+
+<br>
+
+### Table S3
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+dataset.PCA.size.disp <- dataset.PCA.size %>%
+  mutate(period = recode(period, 
+                         "Early Iron Age" = "Early Iron Age", 
+                         "Iron.Age_ceramic.LSA" = "Ceramic LSA", 
+                         "LSA" = "LSA", 
+                         "final.MSA" = "Late final MSA", 
+                         "early.final.MSA" = "Early final MSA")) %>%
+  mutate(period = factor(period, 
+                         levels = c("Early Iron Age", "Ceramic LSA", "LSA", "Late final MSA", "Early final MSA")))
+
+
+rownames_DATASETS.pca <-as.factor(dataset.PCA.size.disp$period)
+
+dataset.pca.disp <- dataset.PCA.size.disp %>%
+  select(Dim.1:Dim.3)
+
+data_subsets.pca <- custom.subsets(dataset.pca.disp, 
+                               group = rownames_DATASETS.pca)
+
+data_boot.pca <- boot.matrix(data_subsets.pca, bootstraps = 1000)
+data_disp.pca <- dispRity(data_boot.pca, metric = c(sum, variances))
+
+pairwise_results.disparity.size <- test.dispRity(data_disp.pca, 
+              test = wilcox.test, 
+              comparisons = "pairwise",
+              correction = "bonferroni")
+
+disparity.size.formatted_results <- as.data.frame(pairwise_results.disparity.size)
+disparity.size.formatted_results <- disparity.size.formatted_results %>%
+  mutate(p.value = format.pval(p.value, digits = 3))
+
+disparity.size.formatted_results %>%
+  kable("html", caption = "Wilcoxon Pairwise Tests") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+  **Table S3.** Results of the Wilcoxon rank-sum test for pairwise comparisons of metric disparity (measured as the sum of variances) among the chronological phases.

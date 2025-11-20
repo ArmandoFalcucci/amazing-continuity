@@ -1,0 +1,1009 @@
+---
+title: "Amazing continuity of mining technology in the southern African Stone Age"
+author: "Armando Falcucci"
+date: ""
+output: html_document
+toc: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE, include=FALSE}
+# Packages used
+library(tidyverse)
+library(readxl)
+library(geomorph)
+library(Morpho)
+library(janitor)
+library(kableExtra)
+library(rstatix)
+library(MetBrewer)
+library(ggplot2)
+library(ggpubr)
+library(vegan)
+library(FactoMineR)
+library(factoextra)
+library(cowplot)
+library(dispRity)
+library(flextable)
+library(cowplot)
+library(pairwiseAdonis)
+
+# Merging datasets ####
+lion.cavern <- read_excel("../data/Lion.Cavern.xlsx")
+
+castle.cavern <- read_excel("../data/Castle.Cavern.xlsx")
+
+datasets.binded <- rbind(lion.cavern, castle.cavern)
+
+dataset <- read_excel("../data/LC-CC_general.xlsx")
+
+dataset.volume <- read.csv("../data/LC-CC_volume-area.csv")
+
+dataset <- left_join(dataset, datasets.binded, by = "ID")
+
+dataset <- dataset %>%
+  mutate(raw.material = recode(raw.material, `Granite?Dolerite?` = "Undetermined", `sandstone?` = "Undetermined", `Shale? Gneis? Grünschiefer` = "Undetermined", `Wethered Dolerite?` = "Undetermined", `volcanic?` = "Undetermined", `Shale/Slate` = "Shale", `Shale/Shist` = "Shale")) %>%
+  mutate(period = recode(period, late.final.MSA = "early.final.MSA"))
+
+dataset$robustness <- dataset$width / dataset$thickness
+
+dataset$elongation <- dataset$length / dataset$width
+
+dataset <- left_join(dataset, dataset.volume, by = "ID")
+
+dataset$LogVolume <- log10(dataset$volume)
+
+dataset$LogRobustness <- log10(dataset$robustness)
+
+
+comparison <- list(c("Early Iron Age", "Iron.Age_ceramic.LSA"), c("Early Iron Age", "LSA"), c("Early Iron Age", "final.MSA"), c("Early Iron Age", "early.final.MSA"), c("Iron.Age_ceramic.LSA", "LSA"), c("Iron.Age_ceramic.LSA", "final.MSA"), c("Iron.Age_ceramic.LSA", "early.final.MSA"), c("LSA", "final.MSA"), c("LSA", "early.final.MSA"), c("final.MSA", "early.final.MSA"))
+
+comparison.2 <- list(c("Castle Cavern (Iron Age)", "Iron.Age_ceramic.LSA"), c("Castle Cavern (Iron Age)", "LSA"), c("Castle Cavern (Iron Age)", "final.MSA"), c("Castle Cavern (Iron Age)", "early.final.MSA"), c("Iron.Age_ceramic.LSA", "LSA"), c("Iron.Age_ceramic.LSA", "final.MSA"), c("Iron.Age_ceramic.LSA", "early.final.MSA"), c("LSA", "final.MSA"), c("LSA", "early.final.MSA"), c("final.MSA", "early.final.MSA"))
+
+comparison.reduced <- list(c("Iron Age", "LSA"), c("Iron Age", "MSA"), c("LSA", "MSA"))
+
+```
+
+<br>
+
+### Table 1
+```{r, echo=FALSE, warning=FALSE}
+dataset %>%
+  mutate(period = fct_recode(period, 
+                             "early Iron Age" = "Early Iron Age", 
+                             "Ceramic LSA" = "Iron.Age_ceramic.LSA", 
+                             "LSA" = "LSA", 
+                             "late final MSA" = "final.MSA", 
+                             "early final MSA" = "early.final.MSA")) %>%
+  mutate(period = fct_relevel(period, "early Iron Age", "Ceramic LSA", "LSA", "late final MSA", "early final MSA")) %>%
+  rename ("Phase" = period) %>%
+  tabyl(Phase, Site) %>%
+  adorn_totals("row") %>%
+  adorn_percentages("col") %>%
+  adorn_pct_formatting(digits = 1) %>%
+  adorn_ns(position = "front") %>%
+  flextable() %>%
+  theme_vanilla() %>%
+  set_table_properties(layout = "autofit") %>%
+  autofit()
+```
+  **Table 1.** Chrono-stratigraphic distribution of the mining tools from Castle Cavern and Lion Cavern.
+
+<br>
+
+### Broken tools count
+```{r, echo=FALSE, warning=FALSE}
+dataset %>%
+  tabyl(complete, Site) %>%
+  # adorn_totals("col") %>%
+  adorn_totals("row") %>%
+  adorn_percentages("col") %>%
+  adorn_pct_formatting(digits = 1) %>%
+  adorn_ns(position = "front") %>%
+  flextable() %>%
+  theme_vanilla() %>%
+  set_table_properties(layout = "autofit") %>%
+  autofit()
+```
+
+<br>
+
+### Grooved tools count
+```{r, echo=FALSE, warning=FALSE}
+dataset %>%
+  filter(Site == "Castle Cavern") %>%
+  rename("Grooved" = grooved.holes) %>%
+  tabyl(Grooved, Site) %>%
+  # adorn_totals("col") %>%
+  adorn_totals("row") %>%
+  adorn_percentages("col") %>%
+  adorn_pct_formatting(digits = 1) %>%
+  adorn_ns(position = "front") %>%
+  adorn_title(placement = "top") %>%
+  kbl(align = "lccccr") %>%
+  row_spec(1, bold = T, hline_after = F) %>%
+  kable_classic_2(lightable_options = "striped", full_width = F)
+```
+
+<br>
+
+### Table 2
+```{r, echo=FALSE, warning=FALSE}
+dataset %>%
+  mutate(period = fct_recode(period, 
+                             "early Iron Age" = "Early Iron Age", 
+                             "Ceramic LSA" = "Iron.Age_ceramic.LSA", 
+                             "LSA" = "LSA", 
+                             "late final MSA" = "final.MSA", 
+                             "early final MSA" = "early.final.MSA")) %>%
+  mutate(period = fct_relevel(period, "early Iron Age", "Ceramic LSA", "LSA", "late final MSA", "early final MSA")) %>%
+  rename ("Raw material" = raw.material) %>%
+  mutate(period = recode(period, `early Iron Age` = "Castle Cavern (early Iron Age)")) %>%
+  tabyl(`Raw material`, period) %>%
+  # adorn_totals("col") %>%
+  adorn_totals("row") %>%
+  adorn_percentages("col") %>%
+  adorn_pct_formatting(digits = 1) %>%
+  adorn_ns(position = "front") %>%
+  flextable() %>%
+  theme_vanilla() %>%
+  set_table_properties(layout = "autofit") %>%
+  autofit()
+```
+  **Table 2.** Distribution of raw materials across the chronological phases at Castle Cavern and Lion Cavern.
+
+<br>
+
+### Figure 4
+```{r, echo=FALSE, warning=FALSE, fig.align='center'}
+volume <- dataset %>%
+    mutate(period = fct_recode(period, 
+                             "early Iron Age" = "Early Iron Age", 
+                             "Ceramic LSA" = "Iron.Age_ceramic.LSA", 
+                             "LSA" = "LSA", 
+                             "late final MSA" = "final.MSA", 
+                             "early final MSA" = "early.final.MSA")) %>%
+  mutate(period = fct_relevel(period, "early Iron Age", "Ceramic LSA", "LSA", "late final MSA", "early final MSA")) %>%
+  rename ("Phase" = period) %>%
+  mutate(period = recode(Phase, `early Iron Age` = "Castle Cavern (early Iron Age)")) %>%
+  filter(leave.out == "no") %>%
+  mutate(period = recode(Phase, `Early Iron Age` = "Castle Cavern (Iron Age)")) %>%
+  ggplot(aes(x = Phase, y =log10(volume))) +
+  geom_boxplot(aes(fill = Phase), alpha=0.7) +
+  geom_jitter(position = position_jitter (width = 0.2), size = 1.5, alpha = 0.6, aes(color = Phase), show.legend = FALSE) +
+  ggthemes::theme_clean() +
+  scale_fill_manual(values=met.brewer("Tiepolo", 5)) +
+  scale_color_manual(values=met.brewer("Tiepolo", 5)) +
+  scale_x_discrete(guide = guide_axis(n.dodge = 2)) +
+  theme(text = element_text(size = 14),
+        axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12),
+        legend.position = "none") +
+  labs(y= "LogVolume")
+
+length <- dataset %>%
+      mutate(period = fct_recode(period, 
+                             "early Iron Age" = "Early Iron Age", 
+                             "Ceramic LSA" = "Iron.Age_ceramic.LSA", 
+                             "LSA" = "LSA", 
+                             "late final MSA" = "final.MSA", 
+                             "early final MSA" = "early.final.MSA")) %>%
+  mutate(period = fct_relevel(period, "early Iron Age", "Ceramic LSA", "LSA", "late final MSA", "early final MSA")) %>%
+  rename ("Phase" = period) %>%
+  mutate(period = recode(Phase, `early Iron Age` = "Castle Cavern (early Iron Age)")) %>%
+  filter(leave.out == "no") %>%
+  mutate(period = recode(Phase, `Early Iron Age` = "Castle Cavern (Iron Age)")) %>%
+  ggplot(aes(x = Phase, y = length)) +
+  geom_boxplot(aes(fill = Phase), alpha = 0.7) +
+  geom_jitter(position = position_jitter (width = 0.2), size = 1.5, alpha = 0.6, aes(color = Phase), show.legend = FALSE) +
+  ggthemes::theme_clean() +
+  scale_fill_manual(values=met.brewer("Tiepolo", 5)) +
+  scale_color_manual(values=met.brewer("Tiepolo", 5)) +
+  scale_x_discrete(guide = guide_axis(n.dodge = 2)) +
+  theme(text = element_text(size = 14),
+        axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12),
+        legend.position = "none") +
+  labs(y= "Length (mm)")
+
+volume.length <- ggarrange(volume, length,
+          labels = c("a", "b"), nrow=1)
+
+ggsave("../output/figures/Figure_4.tiff", plot = volume.length, width = 8, height = 4, units = "in", dpi = 300)
+```
+  **Figure 4.**
+
+<br>
+
+### Figure 5
+```{r, echo=FALSE, warning=FALSE, fig.align='center'}
+raw.mat.thickness <- dataset %>%
+          mutate(period = fct_recode(period, 
+                             "early Iron Age" = "Early Iron Age", 
+                             "Ceramic LSA" = "Iron.Age_ceramic.LSA", 
+                             "LSA" = "LSA", 
+                             "late final MSA" = "final.MSA", 
+                             "early final MSA" = "early.final.MSA")) %>%
+  mutate(period = fct_relevel(period, "early Iron Age", "Ceramic LSA", "LSA", "late final MSA", "early final MSA")) %>%
+  mutate(period = recode(period, `early Iron Age` = "Castle Cavern (early Iron Age)")) %>%
+  rename ("Phase" = period, "Raw material" = raw.material) %>%
+  filter(leave.out == "no") %>%
+  filter(`Raw material` == "Dolerite" | `Raw material` == "Shale") %>%
+  ggplot(aes(x = Phase, y = thickness)) +
+  geom_boxplot(aes(fill = `Raw material`)) +
+  ggthemes::theme_clean() +
+  scale_fill_manual(values=met.brewer("Lakota")) +
+  scale_x_discrete(guide = guide_axis(n.dodge = 2)) +
+  theme(text = element_text(size = 18),
+        axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        legend.position = "bottom") +
+  labs(y= "Thickness (mm)") + 
+   stat_compare_means(aes(group = `Raw material`), label = "p.format", method = "wilcox.test")
+
+ggsave("../output/figures/Figure_5.tiff", plot = raw.mat.thickness, width = 8, height = 4, units = "in", dpi = 300)
+
+```
+  **Figure 5.** Comparison of thickness values (in mm) sorted according to chronological phase and the most common raw materials (i.e., dolerite and shale).
+
+<br>
+
+## PCA with measurement data
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE} 
+dataset.pca <- dataset %>%
+            mutate(period = fct_recode(period, 
+                             "early Iron Age" = "Early Iron Age", 
+                             "ceramic LSA" = "Iron.Age_ceramic.LSA", 
+                             "LSA" = "LSA", 
+                             "late final MSA" = "final.MSA", 
+                             "early final MSA" = "early.final.MSA")) %>%
+  mutate(period = fct_relevel(period, "early Iron Age", "ceramic LSA", "LSA", "late final MSA", "early final MSA")) %>%
+  rename ("Phase" = period) %>%
+  filter(leave.out == "no") %>%
+  select(Site, Phase, raw.material, volume, area, length, width, thickness,width.lower, width.upper, thickness.lower, thickness.upper, elongation, robustness) %>%
+  na.omit() %>%
+  mutate(across(c(raw.material),
+                ~ fct_lump(factor(.), prop = 0.05, other_level = "Other"))) %>%
+  mutate(raw.material = recode(raw.material, "Undetermined" = "Other"))
+
+#3 PCA in the FactoMineR package ####
+PCA.size <- FactoMineR::PCA(dataset.pca, ncp = 15, quali.sup=1:3, scale.unit = T, graph = F)
+
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE} 
+# PCA.measurements$eig # Eigenvalues
+
+# eig.val <- get_eigenvalue(PCA.size)
+# eig.val
+
+#4 Results of the PCA ####
+dimdesc_PCA_measurements <- dimdesc(PCA.size, axes=c(1:3))
+print(dimdesc_PCA_measurements)
+
+#5 First visualization plot ####
+# plot.PCA(PCA.measurements)
+
+PC.scores.size <- as.data.frame(PCA.size$ind$coord)
+
+dataset.PCA.size <- dataset %>%
+  filter(leave.out != "yes")
+
+dataset.PCA.size <- cbind(dataset.PCA.size, PC.scores.size) 
+```
+
+<br>
+
+### Figure 6
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+scree.plot.pca <- fviz_eig(PCA.size, ncp = 6, addlabels = T,
+                             repel=T,
+                             ggtheme=theme(text=element_text(size=14),
+                                           plot.title = element_blank(),
+                                           axis.title = element_text(size=14),
+                                           axis.text = element_text(size=12))) + 
+  ylim(0, 50) +
+  theme_minimal_grid() +
+  labs(x = "Principal Components", y = "% Explained Variance") +
+  theme(plot.title = element_blank())
+
+corr.circle.pca <- fviz_pca_var(PCA.size,
+                                   col.var = "cos2",
+                                   axes =c(1,2),
+                                   labelsize=4,repel = T, ggtheme=theme(text=element_text(size=14),
+                                                                        axis.title = element_text(size=14),
+                                                                        axis.text = element_text(size=12),
+                                                                        legend.position = "bottom")) +
+  labs(y = "PC2 (21.6%)", x = "PC1 (47.2%)", colour = "cos2") +
+  theme_minimal_grid() +
+  theme(plot.title = element_blank()) +
+  scale_color_gradientn(colors=met.brewer("Isfahan1"))
+
+#need to rename the variables
+pca.1.2.biplot <- factoextra::fviz_pca_ind(PCA.size,
+             axes=c(1, 2), label="none",
+             addEllipses=T, ellipse.type="confidence",
+             habillage=c(2), pointsize=3, labelsize=10, repel=T,
+            col.var = "red",
+             ggtheme = theme(text=element_text(size=16),
+                             axis.title = element_text(size=16),
+                             axis.text = element_text(size=14)),
+             legend.title=element_text("Phase")) +
+  scale_fill_manual(values = met.brewer("Tiepolo", 5)) + 
+  scale_color_manual(values = met.brewer("Tiepolo", 5)) + 
+  labs(x="PC1 (47.2%)", y="PC2 (21.6%)") +
+  theme_minimal_grid() +
+  theme(plot.title = element_blank()) +
+  theme(plot.title = element_blank(),
+        text=element_text(size=14),
+        axis.title = element_text(size=14),
+        axis.text = element_text(size=14))
+
+ggsave(
+  filename = "../output/figures/Figure_6.tiff", 
+  width = 8, 
+  height = 7,
+  units = "in", 
+  bg = "white", 
+  dpi = 300, 
+  plot = (
+    ggdraw() +
+      draw_plot(scree.plot.pca, x = 0, y = 0.5, width = 0.45, height = 0.45) +
+      draw_plot(corr.circle.pca, x = 0.45, y = 0.5, width = 0.55, height = 0.45) +
+      draw_plot(pca.1.2.biplot, x = 0, y = 0.05, width = 1, height = 0.45) +
+      draw_plot_label(
+        label = c("a", "b", "c"), 
+        x = c(0, 0.5, 0), 
+        y = c(1, 1, 0.55),
+        size = 14
+      )
+  )
+)
+```
+  **Figure 6.** PCA analysis of metric variables. (a) Scree plot dispaying the percentage of variance explained by the first six components. (b) Biplot showing the contribution of the different quantitative variables to the first and second components. (c) Distribution of the mining tools in the PC1 to PC2 space, sorted according to chronological phase.
+
+<br>
+
+```{r, echo=FALSE}
+# fviz_pca_var(PCA.size,
+#                                    col.var = "cos2",
+#                                    axes =c(1,2),
+#                                    labelsize=5,repel = T, ggtheme=theme(text=element_text(size=14),
+#                                                                         axis.title = element_text(size=14),
+#                                                                         axis.text = element_text(size=12),
+#                                                                         legend.position = "bottom")) +
+#   labs(y = "PC2 (21.6%)", x = "PC1 (47.2%)", colour = "cos2") +
+#   theme_minimal_grid() +
+#   theme(plot.title = element_blank()) +
+#   scale_color_gradientn(colors=met.brewer("Isfahan1"))
+```
+
+<br>
+
+### Figure correlation
+```{r}
+# library(corrplot)
+# corrplot(PCA.size$var$contrib, is.corr = FALSE, method = "color")
+# 
+# # Plotting the correlation contribution using a nicer style
+# corrplot(PCA.size$var$contrib, 
+#          is.corr = FALSE, 
+#          method = "color", 
+#          col = colorRampPalette(c("blue", "white", "red"))(200), 
+#          title = "",
+#          tl.col = "black",    # Change the axis labels color to black
+#          cl.col = "black")
+
+```
+
+<br>
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+# PC.scores.measur <- PCA.size$ind$coord
+# dataset.pca <- cbind(dataset.pca, PC.scores.measur)
+```
+
+### PERMANOVA tests based on the PCA of metric variables
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+Y.PERMANOVA.pca <- select(dataset.PCA.size, Dim.1:Dim.3)
+
+# Perform a one-way PERMANOVA:
+PCA_PERMANOVA.period <- adonis2(Y.PERMANOVA.pca ~ dataset.pca$Phase, method = "euclidean",
+       permutations = 10000)
+
+PCA_PERMANOVA.raw.material <- adonis2(Y.PERMANOVA.pca ~ dataset.pca$raw.material, method = "euclidean",
+       permutations = 10000)
+
+# Create a data frame to store PERMANOVA results
+permanova.size_results <- data.frame(
+  Factor = c("Phase", "Raw Material"),
+  F.Model = c(PCA_PERMANOVA.period$F[1], PCA_PERMANOVA.raw.material$F[1]),
+  R2 = c(PCA_PERMANOVA.period$R2[1], PCA_PERMANOVA.raw.material$R2[1]),
+  p.value = c(PCA_PERMANOVA.period$Pr[1], PCA_PERMANOVA.raw.material$Pr[1])
+)
+
+# Display PERMANOVA results
+permanova.size_results %>%
+  mutate(p.value = format.pval(p.value, digits = 4)) %>%
+  flextable() %>%
+  theme_vanilla() %>%
+  set_table_properties(layout = "autofit") %>%
+  autofit()
+```
+  **Table 8.**
+
+### Table 3
+
+```{r, echo=FALSE}
+# Pairwise differences:
+Pairwise_PERMANOVA.pca.period <- pairwiseAdonis::pairwise.adonis(Y.PERMANOVA.pca, dataset.pca$Phase, sim.method = "euclidean",
+                p.adjust.m = "bonferroni", perm = 10000)
+
+Pairwise_PERMANOVA.pca.period[, c(1, 5:8)] %>%
+  flextable() %>%
+  theme_vanilla() %>%
+  set_table_properties(layout = "autofit") %>%
+  autofit()
+```
+  **Table 3.** Results of the pairwise tests. Sig. stands for Significance value. Significance levels: p < 0.01 (**) and p < 0.05 (*).
+
+<br>
+
+## Geometric morphometrics analysis
+
+```{r, echo=FALSE, include=FALSE}
+load("../data/ar_data.RData")
+
+GM.morpho <- procSym(ar) #used to run a GPA and PCA with Morpho
+
+GM.morpho.size <- procSym(ar, sizeshape = TRUE) # A Morpho function to conduct Form PCA using Csize (in this case it is the first PC)
+
+PC.scores.GM <- as.data.frame(GM.morpho$PCscores)
+
+centroid.size.GM <- as.data.frame(GM.morpho$rho) %>%
+  rename("centroid.size" = `GM.morpho$rho`) 
+
+dataset.GM <- dataset %>%
+  filter(leave.out != "yes")
+
+dataset.GM <- cbind(dataset.GM, PC.scores.GM, centroid.size.GM)
+
+dataset.GM$LogCS <- log10(dataset.GM$centroid.size)
+
+PC.scores.GM.size <- as.data.frame(GM.morpho.size$PCscores)
+
+centroid.size.GM.size <- as.data.frame(GM.morpho.size$rho) %>%
+  rename("centroid.size" = `GM.morpho.size$rho`) 
+
+dataset.GM.size <- dataset %>%
+  filter(leave.out != "yes")
+
+dataset.GM.size <- cbind(dataset.GM.size, PC.scores.GM.size, centroid.size.GM.size)
+```
+
+```{r, echo=FALSE}
+
+# getMeaningfulPCs(GM.morpho$eigenvalues,n=nrow(GM.morpho$PCscores))
+
+# barplot(GM.morpho$eigenvalues)
+# 
+# 
+# GM.morpho$eigenvalues
+# 
+# contributions <- GM.morpho$PCscores
+# print(contributions)
+# 
+# variance_explained <- GM.morpho$eigenvalues / sum(GM.morpho$eigenvalues) * 100
+# print(variance_explained)
+# 
+# # Calculate the percentage of variance explained by each principal component
+# variance_explained <- GM.morpho$eigenvalues / sum(GM.morpho$eigenvalues) * 100
+# 
+# # Calculate the cumulative percentage of variance explained
+# cumulative_variance_explained <- cumsum(variance_explained)
+# 
+# # Print the cumulative variance explained
+# print(cumulative_variance_explained)
+
+
+#GM.morpho$Variance
+
+```
+
+## Geomorph 3DGM for allometry
+
+```{r}
+GM.geomorph <- gpagen(ar, 
+                 curves = NULL, 
+                 surfaces = NULL, 
+                 PrinAxes = TRUE,
+                 max.iter = NULL, 
+                 ProcD = TRUE, 
+                 Proj = TRUE, 
+                 print.progress = TRUE)
+
+str(GM.geomorph)
+
+GM.geomorph.df <- geomorph.data.frame(GM.geomorph)
+
+
+GM.geomorph.df <- append(GM.geomorph.df, dataset.GM[, 1:15])
+
+GM.geomorph.df$LogCS <- log10(GM.geomorph.df$Csize)
+```
+
+### Figure 7
+```{r}
+
+size.data.GM <- mutate(dataset.GM, Csize = GM.geomorph$Csize)
+
+# Summarise descriptive statistics (mean, min, max, sd, Coefficient of Variation (CV))
+Csize_stats_period <- size.data.GM %>%
+  group_by(period) %>%
+  summarise(
+    mean_Csize = mean(Csize, na.rm = TRUE),
+    min_Csize = min(Csize, na.rm = TRUE),
+    max_Csize = max(Csize, na.rm = TRUE),
+    sd_Csize = sd(Csize, na.rm = TRUE),
+    CV_Csize = (sd_Csize / mean_Csize) * 100
+  )
+print(Csize_stats_period)
+
+Csize.stats <- table(Csize_stats_period)
+
+centroid.plot <- size.data.GM %>%
+  mutate(period = recode(period, 
+                         "Early Iron Age" = "early Iron Age", 
+                         "Iron.Age_ceramic.LSA" = "ceramic LSA", 
+                         "LSA" = "LSA", 
+                         "final.MSA" = "late final MSA", 
+                         "early.final.MSA" = "early final MSA")) %>%
+  mutate(period = factor(period, 
+                         levels = c("early Iron Age", "ceramic LSA", "LSA", "late final MSA", "early final MSA"))) %>%
+  ggplot(aes(x = period, y = log10(Csize), fill = period)) +
+  geom_jitter(position = position_jitter (width = 0.2), size = 1.5, alpha = 0.6, aes(color = period), show.legend = FALSE) +
+  geom_boxplot(show.legend = FALSE, alpha = 0.7) +
+  labs(x = "Phase", y = "Log Centroid size") +
+  scale_fill_manual(values=met.brewer("Tiepolo", 5)) +
+  scale_color_manual(values=met.brewer("Tiepolo", 5)) +
+  scale_x_discrete(guide = guide_axis(n.dodge = 2)) +
+    ggthemes::theme_clean()
+
+centroid.plot
+
+ggsave("../output/figures/Figure_7.tiff", plot = centroid.plot, width = 4, height = 3, units = "in", dpi = 300)
+```
+  **Figure 7.** Boxplots with jittered points of the log-transformed centroid size across chronological phases at Castle Cavern and Lion Cavern.
+
+### Procrustes allometry
+
+```{r}
+Proc.ANOVA.CS <- procD.lm(coords ~ LogCS, data=GM.geomorph.df, iter=10000, RRPP=TRUE, print.progress = FALSE)
+
+summary(Proc.ANOVA.CS)
+
+colsperiod <- c("early iron age" = "blue",
+                "iron.age_ceramic.lsa" = "green",
+                "lsa" = "orange",
+                "final.msa" = "purple",
+                "early.final.msa" = "red")
+
+shapesperiod <- c("early iron age" = 16,
+                  "iron.age_ceramic.lsa" = 17,
+                  "lsa" = 18,
+                  "final.msa" = 15,
+                  "early.final.msa" = 8)
+
+color <- colsperiod[GM.geomorph.df$period]
+shape <- shapesperiod[GM.geomorph.df$period]
+
+GM.geomorph.df$period <- as.factor(GM.geomorph.df$period)
+
+RegGM <- plotAllometry(Proc.ANOVA.CS, size = GM.geomorph.df$LogCS, method = "RegScore",
+                       col = color, pch = shape, bg = GM.geomorph.df$period,
+                       xlab = "Ln Mining Tools Centroid Size")
+```
+
+### ProcANOVA means
+```{r}
+Proc.ANOVA.period <- procD.lm(coords ~ period, data=GM.geomorph.df, iter=10000, RRPP=TRUE, print.progress = FALSE)
+
+# View ANOVA results
+summary(Proc.ANOVA.period)
+
+Proc.ANOVA.rawmat <- procD.lm(coords ~ raw.material, data=GM.geomorph.df, iter=10000, RRPP=TRUE, print.progress = FALSE)
+
+# View ANOVA results
+summary(Proc.ANOVA.rawmat)
+```
+
+### Figure 8
+
+```{r}
+dataGM <- data.frame(LogCS = log10(GM.geomorph.df$Csize), regsc = RegGM$RegScore, 
+                     GM.geomorph.df$period)
+
+dataGM <- dataGM %>%
+    mutate(GM.geomorph.df.period = recode(GM.geomorph.df.period, 
+                         "Early Iron Age" = "early Iron Age", 
+                         "Iron.Age_ceramic.LSA" = "ceramic LSA", 
+                         "LSA" = "LSA", 
+                         "final.MSA" = "late final MSA", 
+                         "early.final.MSA" = "early final MSA")) %>%
+  mutate(GM.geomorph.df.period = factor(GM.geomorph.df.period, 
+                         levels = c("early Iron Age", "ceramic LSA", "LSA", "late final MSA", "early final MSA")))
+  
+
+regression.plot <- ggplot(dataGM, aes(x = LogCS, y = regsc)) +
+  geom_point(aes(col = GM.geomorph.df.period), size = 3, alpha=0.8) +
+  geom_smooth(method = "lm", se = FALSE, color = "black", linetype = "dashed", linewidth = 0.6, fullrange = TRUE) +
+  labs(x = "Log centroid size", y = "Regression score", color = "Phase", shape = "Phase") +
+  geom_hline(yintercept = -0.2, linetype = "solid", color = "darkgrey") +
+  geom_vline(xintercept = 3.1, linetype = "solid", color = "darkgrey") +
+    scale_fill_manual(values = met.brewer("Tiepolo", 5)) +
+  scale_color_manual(values = met.brewer("Tiepolo", 5)) + 
+  theme_minimal()+
+  annotate("text", x = 3.48, y = -0.082, label = "-0.33", color = "black", size = 4, angle = 0, hjust = 0) +
+  theme(legend.position = "bottom",
+        legend.title = element_blank(),
+        legend.text = element_text(size = 14),
+        axis.title.x = element_text(size = 16),
+        axis.title.y = element_text(size = 16),
+        axis.text = element_text(size = 12))
+
+regression.plot
+
+ggsave("../output/figures/Figure_8.tiff", plot = regression.plot, width = 8, height = 5, units = "in", dpi = 300)
+```
+  **Figure 8.** Linear regression plot comparing shape changes (regression scores) with log-transformed centroid size, with tools sorted according to chronological phase.
+
+
+```{r}
+# Calculate slope of regression lines on plot
+regline <- lm(regsc ~ LogCS, data = dataGM)
+slope <- coefficients(regline)[2]
+print(slope)
+```
+
+### Table 4
+
+```{r}
+
+clean_data <- dataset.GM %>%
+  filter(!is.na(PC1) & !is.na(PC2) & !is.na(PC3) &
+         !is.na(LogCS) & !is.na(LogVolume) & !is.na(length) &
+         !is.na(width) & !is.na(thickness))
+
+correlation_test_pc1_logcs <- suppressWarnings(cor.test(clean_data$PC1, clean_data$LogCS, method = "spearman"))
+correlation_test_pc1_volume <- suppressWarnings(cor.test(clean_data$PC1, clean_data$LogVolume, method = "spearman"))
+correlation_test_pc1_length <- suppressWarnings(cor.test(clean_data$PC1, clean_data$length, method = "spearman"))
+correlation_test_pc1_width <- suppressWarnings(cor.test(clean_data$PC1, clean_data$width, method = "spearman"))
+correlation_test_pc1_thickness <- suppressWarnings(cor.test(clean_data$PC1, clean_data$thickness, method = "spearman"))
+
+correlation_test_pc2_logcs <- suppressWarnings(cor.test(clean_data$PC2, clean_data$LogCS, method = "spearman"))
+correlation_test_pc2_volume <- suppressWarnings(cor.test(clean_data$PC2, clean_data$LogVolume, method = "spearman"))
+correlation_test_pc2_length <- suppressWarnings(cor.test(clean_data$PC2, clean_data$length, method = "spearman"))
+correlation_test_pc2_width <- suppressWarnings(cor.test(clean_data$PC2, clean_data$width, method = "spearman"))
+correlation_test_pc2_thickness <- suppressWarnings(cor.test(clean_data$PC2, clean_data$thickness, method = "spearman"))
+
+correlation_test_pc3_logcs <- suppressWarnings(cor.test(clean_data$PC3, clean_data$LogCS, method = "spearman"))
+correlation_test_pc3_volume <- suppressWarnings(cor.test(clean_data$PC3, clean_data$LogVolume, method = "spearman"))
+correlation_test_pc3_length <- suppressWarnings(cor.test(clean_data$PC3, clean_data$length, method = "spearman"))
+correlation_test_pc3_width <- suppressWarnings(cor.test(clean_data$PC3, clean_data$width, method = "spearman"))
+correlation_test_pc3_thickness <- suppressWarnings(cor.test(clean_data$PC3, clean_data$thickness, method = "spearman"))
+
+correlation_results <- data.frame(
+  Variable1 = c("PC1 vs LogCS", "PC1 vs LogVolume", "PC1 vs Length", "PC1 vs Width", "PC1 vs Thickness",
+                "PC2 vs LogCS", "PC2 vs LogVolume", "PC2 vs Length", "PC2 vs Width", "PC2 vs Thickness",
+                "PC3 vs LogCS", "PC3 vs LogVolume", "PC3 vs Length", "PC3 vs Width", "PC3 vs Thickness"),
+  Correlation_Coefficient = round(c(
+    correlation_test_pc1_logcs$estimate,
+    correlation_test_pc1_volume$estimate,
+    correlation_test_pc1_length$estimate,
+    correlation_test_pc1_width$estimate,
+    correlation_test_pc1_thickness$estimate,
+    correlation_test_pc2_logcs$estimate,
+    correlation_test_pc2_volume$estimate,
+    correlation_test_pc2_length$estimate,
+    correlation_test_pc2_width$estimate,
+    correlation_test_pc2_thickness$estimate,
+    correlation_test_pc3_logcs$estimate,
+    correlation_test_pc3_volume$estimate,
+    correlation_test_pc3_length$estimate,
+    correlation_test_pc3_width$estimate,
+    correlation_test_pc3_thickness$estimate
+  ), 2),
+  
+  P_Value = round(c(
+    correlation_test_pc1_logcs$p.value,
+    correlation_test_pc1_volume$p.value,
+    correlation_test_pc1_length$p.value,
+    correlation_test_pc1_width$p.value,
+    correlation_test_pc1_thickness$p.value,
+    correlation_test_pc2_logcs$p.value,
+    correlation_test_pc2_volume$p.value,
+    correlation_test_pc2_length$p.value,
+    correlation_test_pc2_width$p.value,
+    correlation_test_pc2_thickness$p.value,
+    correlation_test_pc3_logcs$p.value,
+    correlation_test_pc3_volume$p.value,
+    correlation_test_pc3_length$p.value,
+    correlation_test_pc3_width$p.value,
+    correlation_test_pc3_thickness$p.value
+  ), 3)
+)
+
+colnames(correlation_results) <- c("Correlation", "Corr. coefficient", "p-value")
+
+flextable(correlation_results) %>%
+  theme_vanilla() %>%
+  set_table_properties(layout = "autofit") %>%
+  autofit()
+
+```
+  **Table 4.** Spearman’s correlations between the first three PCs and the logarithmic of centroid size (LogCS) and volume (LogVolume), as well as the maximum linear dimensions (length, width, and thickness).
+
+<br>
+
+### Shape changes
+
+```{r}
+# Visualize the shape changes with geomorph using different methods ----------------
+
+# pcaplot3d(GM.morpho, pcshow=1, mag = 2, color=3, lw=1, sym=T, legend=TRUE) #used to plot the shape changes along PC1
+# 
+# pcaplot3d(GM.morpho, pcshow=2, mag = 2.5, color=3, lw=1, sym=T, legend=TRUE) #used to plot the shape changes along PC1
+# 
+# pcaplot3d(GM.morpho, pcshow=3, mag = 2.5, color=3, lw=1, sym=T, legend=TRUE) #used to plot the shape changes along PC1
+
+```
+
+<br>
+
+### Figure 10
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+
+dataset.GM.biplot <- dataset.GM %>%
+  mutate(period = recode(period, 
+                         "Early Iron Age" = "early Iron Age", 
+                         "Iron.Age_ceramic.LSA" = "ceramic LSA", 
+                         "LSA" = "LSA", 
+                         "final.MSA" = "late final MSA", 
+                         "early.final.MSA" = "early final MSA")) %>%
+  mutate(period = factor(period, 
+                         levels = c("early Iron Age", "ceramic LSA", "LSA", "late final MSA", "early final MSA")))
+
+PC1.PC2_GM <- dataset.GM.biplot %>%
+  ggplot(aes(x = PC1, y = PC2, color = period, fill = period)) +
+  geom_point(size = 3) +
+  stat_ellipse(aes(color = period, fill = period), 
+               level = 0.80, 
+               alpha = 0.3, 
+               geom = "polygon") +
+  scale_fill_manual(values = met.brewer("Tiepolo", 5)) +
+  scale_color_manual(values = met.brewer("Tiepolo", 5)) +
+  labs(x = "PC1 (40.6%)", y = "PC2 (13.5%)", color = "Period", fill = "Period") +
+  geom_hline(yintercept = 0, 
+             linetype = "dashed", 
+             color = "black",
+             size = 0.5, 
+             alpha = 0.5) +
+  geom_vline(xintercept = 0, 
+             linetype = "dashed", 
+             color = "black",
+             size = 0.5, 
+             alpha = 0.5) +
+  geom_point(data = dataset.GM.biplot %>%
+               group_by(period) %>%
+               summarise(mean_PC1 = mean(PC1), mean_PC2 = mean(PC2), .groups = "drop"), 
+             aes(x = mean_PC1, y = mean_PC2, color = period), 
+             size = 5, shape = 17) +
+  theme(legend.position = "bottom",
+        legend.title = element_blank(),
+        legend.text = element_text(size = 14),
+        axis.title.x = element_text(size = 16),
+        axis.title.y = element_text(size = 16),
+        axis.text = element_text(size = 12))
+
+PC1.PC2_GM
+
+ggsave("../output/figures/Figure_10.tiff", plot = PC1.PC2_GM, width = 8, height = 5, units = "in", dpi = 300)
+
+```
+  **Figure 10.** PCA biplot showing the shape variability of the mining tools along PC1 and PC2, sorted by chronological phase. Mean values are represented by triangles, and the confidence ellipses correspond to 80% of the variability.
+
+<br>
+
+## PERMANOVA 3DGM
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+
+Y.PERMANOVA <- select(dataset.GM, "PC1":"PC16")
+
+# Perform a one-way PERMANOVA:
+GM_PERMANOVA.period <- adonis2(Y.PERMANOVA ~ dataset.GM$period, method = "euclidean",
+       permutations = 10000)
+
+GM_PERMANOVA.raw.material <- adonis2(Y.PERMANOVA ~ dataset.GM$raw.material, method = "euclidean",
+       permutations = 10000)
+
+permanova_results <- data.frame(
+  Factor = c("Period", "Raw Material"),
+  F.Model = c(GM_PERMANOVA.period$F[1], GM_PERMANOVA.raw.material$F[1]),
+  R2 = c(GM_PERMANOVA.period$R2[1], GM_PERMANOVA.raw.material$R2[1]),
+  p.value = c(GM_PERMANOVA.period$Pr[1], GM_PERMANOVA.raw.material$Pr[1])
+)
+
+permanova_results %>%
+  mutate(p.value = format.pval(p.value, digits = 4)) %>%
+  kable("html", caption = "PERMANOVA Results") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+
+<br>
+
+## Disparity shape
+```{r, echo=FALSE}
+rownames_DATASETS <-as.factor(dataset.GM.biplot$period)
+
+PC.data.subset.GM <- select(dataset.GM.biplot, "PC1":"PC16")
+
+data_subsets <- custom.subsets(PC.data.subset.GM, 
+                               group = rownames_DATASETS)
+
+data_boot <- boot.matrix(data_subsets, bootstraps = 1000)
+
+data_disp <- dispRity(data_boot, metric = c(sum, variances))
+
+pairwise_results.disparity.shape <- test.dispRity(data_disp,
+              test = wilcox.test, 
+              comparisons = "pairwise",
+              correction = "bonferroni")
+
+disparity.shape.formatted_results <- as.data.frame(pairwise_results.disparity.shape)
+disparity.shape.formatted_results <- disparity.shape.formatted_results %>%
+  mutate(p.value = format.pval(p.value, digits = 3))
+
+# disparity.shape.formatted_results %>%
+#   kable("html", caption = "Wilcoxon Pairwise Tests") %>%
+#   kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+data_names <- names(data_disp$disparity)
+disparity_df_list <- list()
+for(i in data_names){
+  disparity_df_list[[i]] <- data.frame(Context = paste0(i, 
+                                                        "\n(n=",nrow(data_disp$subsets[[i]]$elements),")"),
+                                       disparity = as.vector(data_disp$disparity[[i]][[2]]),
+                                       nelements = nrow(data_disp$subsets[[i]]$elements),
+                                       TS = i)
+}
+disparity_df_discrete_GM <- do.call(rbind.data.frame, disparity_df_list)
+
+disparity_df_discrete_GM.plot <-
+  disparity_df_discrete_GM %>%
+  mutate(Context = fct_relevel(Context, "Early Iron Age\n(n=34)", "Ceramic LSA\n(n=10)", "LSA\n(n=12)", "Late final MSA\n(n=22)", "Early final MSA\n(n=19)")) %>%
+  ggplot(aes(x = Context, y = log10(disparity))) +
+  geom_violin(aes(fill = Context), alpha = 0.7) + 
+  geom_boxplot(notch = T, width = 0.1, fill = "white", color = "black") +
+  theme_bw() +
+  ggtitle(NULL) +
+  xlab("") + 
+  ylab("Shape") +
+  theme(plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+        axis.text=element_text(size=21), #,face="bold"
+        axis.text.x = element_text(angle = 45, vjust = 0.5, hjust = 0.5, size=25),
+        axis.title.y = element_text(vjust = 0),
+        axis.title=element_text(size=25)) +
+    scale_fill_manual(values = met.brewer("Tiepolo", 5)) +
+  scale_color_manual(values = met.brewer("Tiepolo", 5)) +
+  guides(color = FALSE, fill = FALSE)
+
+disparity_df_discrete_GM.plot
+```
+
+<br>
+
+### Disparity size
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+dataset.PCA.size.disp <- dataset.PCA.size %>%
+  mutate(period = recode(period, 
+                         "Early Iron Age" = "Early Iron Age", 
+                         "Iron.Age_ceramic.LSA" = "Ceramic LSA", 
+                         "LSA" = "LSA", 
+                         "final.MSA" = "Late final MSA", 
+                         "early.final.MSA" = "Early final MSA")) %>%
+  mutate(period = factor(period, 
+                         levels = c("Early Iron Age", "Ceramic LSA", "LSA", "Late final MSA", "Early final MSA")))
+
+
+rownames_DATASETS.pca <-as.factor(dataset.PCA.size.disp$period)
+
+dataset.pca.disp <- dataset.PCA.size.disp %>%
+  select(Dim.1:Dim.3)
+
+data_subsets.pca <- custom.subsets(dataset.pca.disp, 
+                               group = rownames_DATASETS.pca)
+
+data_boot.pca <- boot.matrix(data_subsets.pca, bootstraps = 1000)
+data_disp.pca <- dispRity(data_boot.pca, metric = c(sum, variances))
+
+pairwise_results.disparity.size <- test.dispRity(data_disp.pca, 
+              test = wilcox.test, 
+              comparisons = "pairwise",
+              correction = "bonferroni")
+
+
+disparity.size.formatted_results <- as.data.frame(pairwise_results.disparity.size)
+disparity.size.formatted_results <- disparity.size.formatted_results %>%
+  mutate(p.value = format.pval(p.value, digits = 3))
+
+# disparity.size.formatted_results %>%
+#   kable("html", caption = "Wilcoxon Pairwise Tests") %>%
+#   kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+
+```{r, echo=FALSE}
+data_names.pca <- names(data_disp.pca$disparity)
+disparity_df_list.pca <- list()
+for(i in data_names.pca){
+  disparity_df_list.pca[[i]] <- data.frame(Context = paste0(i, 
+                                                        "\n(n=",nrow(data_disp.pca$subsets[[i]]$elements),")"),
+                                       disparity = as.vector(data_disp.pca$disparity[[i]][[2]]),
+                                       nelements = nrow(data_disp.pca$subsets[[i]]$elements),
+                                       TS = i)
+}    
+disparity_df_discrete_pca <- do.call(rbind.data.frame, disparity_df_list.pca )
+
+disparity_df_discrete_pca.plot <- disparity_df_discrete_pca %>%
+  mutate(Context = fct_relevel(Context, 
+                               "Early Iron Age\n(n=34)", 
+                               "Ceramic LSA\n(n=10)", 
+                               "LSA\n(n=12)", 
+                               "Late final MSA\n(n=22)", 
+                               "Early final MSA\n(n=19)"),
+         TS = fct_relevel(TS, 
+                          "Early Iron Age", 
+                          "Ceramic LSA", 
+                          "LSA", 
+                          "Late final MSA", 
+                          "Early final MSA")) %>%
+  ggplot(aes(x = Context, y = log10(disparity))) +
+  geom_violin(aes(fill = TS), alpha = 0.7) + 
+  geom_boxplot(notch = TRUE, width = 0.1, fill = "white", color = "black") +
+  theme_bw() +
+  ggtitle(NULL) +
+  xlab("") + 
+  ylab("Size") +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    axis.text = element_text(size = 21), 
+    axis.text.x = element_text(angle = 45, vjust = 0.5, hjust = 0.5, size = 25),
+    axis.title.y = element_text(vjust = 0),
+    axis.title = element_text(size = 25)
+  ) +
+  scale_fill_manual(values = met.brewer("Tiepolo", 5)) +
+  scale_color_manual(values = met.brewer("Tiepolo", 5)) +
+  guides(color = FALSE, fill = FALSE)
+
+disparity_df_discrete_pca.plot
+
+```
+
+<br>
+
+### Figure 11
+
+```{r}
+disparity.figure <- ggarrange(disparity_df_discrete_GM.plot, disparity_df_discrete_pca.plot,
+          labels = c("a", "b"), 
+          font.label = list(size = 23, face = "bold"),
+          nrow=1)
+
+ggsave("../output/figures/Figure_11.tiff", plot = disparity.figure, width = 14, height = 7, units = "in", dpi = 300)
+```
