@@ -157,16 +157,16 @@ dataset %>%
 
 <br>
 
-### Figure 4
+### Figure 5
 ```{r, echo=FALSE, warning=FALSE, fig.align='center'}
 volume <- dataset %>%
     mutate(period = fct_recode(period, 
                              "early Iron Age" = "Early Iron Age", 
-                             "Ceramic LSA" = "Iron.Age_ceramic.LSA", 
+                             "ceramic LSA" = "Iron.Age_ceramic.LSA", 
                              "LSA" = "LSA", 
                              "late final MSA" = "final.MSA", 
                              "early final MSA" = "early.final.MSA")) %>%
-  mutate(period = fct_relevel(period, "early Iron Age", "Ceramic LSA", "LSA", "late final MSA", "early final MSA")) %>%
+  mutate(period = fct_relevel(period, "early Iron Age", "ceramic LSA", "LSA", "late final MSA", "early final MSA")) %>%
   rename ("Phase" = period) %>%
   mutate(period = recode(Phase, `early Iron Age` = "Castle Cavern (early Iron Age)")) %>%
   filter(leave.out == "no") %>%
@@ -187,11 +187,11 @@ volume <- dataset %>%
 length <- dataset %>%
       mutate(period = fct_recode(period, 
                              "early Iron Age" = "Early Iron Age", 
-                             "Ceramic LSA" = "Iron.Age_ceramic.LSA", 
+                             "ceramic LSA" = "Iron.Age_ceramic.LSA", 
                              "LSA" = "LSA", 
                              "late final MSA" = "final.MSA", 
                              "early final MSA" = "early.final.MSA")) %>%
-  mutate(period = fct_relevel(period, "early Iron Age", "Ceramic LSA", "LSA", "late final MSA", "early final MSA")) %>%
+  mutate(period = fct_relevel(period, "early Iron Age", "ceramic LSA", "LSA", "late final MSA", "early final MSA")) %>%
   rename ("Phase" = period) %>%
   mutate(period = recode(Phase, `early Iron Age` = "Castle Cavern (early Iron Age)")) %>%
   filter(leave.out == "no") %>%
@@ -212,22 +212,22 @@ length <- dataset %>%
 volume.length <- ggarrange(volume, length,
           labels = c("a", "b"), nrow=1)
 
-ggsave("../output/figures/Figure_4.tiff", plot = volume.length, width = 8, height = 4, units = "in", dpi = 300)
+ggsave("../output/figures/Figure_5.tiff", plot = volume.length, width = 8, height = 4, units = "in", dpi = 300)
 ```
-  **Figure 4.**
+  **Figure 5.**
 
 <br>
 
-### Figure 5
+### Figure 6
 ```{r, echo=FALSE, warning=FALSE, fig.align='center'}
 raw.mat.thickness <- dataset %>%
           mutate(period = fct_recode(period, 
                              "early Iron Age" = "Early Iron Age", 
-                             "Ceramic LSA" = "Iron.Age_ceramic.LSA", 
+                             "ceramic LSA" = "Iron.Age_ceramic.LSA", 
                              "LSA" = "LSA", 
                              "late final MSA" = "final.MSA", 
                              "early final MSA" = "early.final.MSA")) %>%
-  mutate(period = fct_relevel(period, "early Iron Age", "Ceramic LSA", "LSA", "late final MSA", "early final MSA")) %>%
+  mutate(period = fct_relevel(period, "early Iron Age", "ceramic LSA", "LSA", "late final MSA", "early final MSA")) %>%
   mutate(period = recode(period, `early Iron Age` = "Castle Cavern (early Iron Age)")) %>%
   rename ("Phase" = period, "Raw material" = raw.material) %>%
   filter(leave.out == "no") %>%
@@ -244,10 +244,10 @@ raw.mat.thickness <- dataset %>%
   labs(y= "Thickness (mm)") + 
    stat_compare_means(aes(group = `Raw material`), label = "p.format", method = "wilcox.test")
 
-ggsave("../output/figures/Figure_5.tiff", plot = raw.mat.thickness, width = 8, height = 4, units = "in", dpi = 300)
+ggsave("../output/figures/Figure_6.tiff", plot = raw.mat.thickness, width = 8, height = 4, units = "in", dpi = 300)
 
 ```
-  **Figure 5.** Comparison of thickness values (in mm) sorted according to chronological phase and the most common raw materials (i.e., dolerite and shale).
+  **Figure 6.** Comparison of thickness values (in mm) sorted according to chronological phase and the most common raw materials (i.e., dolerite and shale).
 
 <br>
 
@@ -298,7 +298,7 @@ dataset.PCA.size <- cbind(dataset.PCA.size, PC.scores.size)
 
 <br>
 
-### Figure 6
+### Figure 7
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 scree.plot.pca <- fviz_eig(PCA.size, ncp = 6, addlabels = T,
                              repel=T,
@@ -344,7 +344,7 @@ pca.1.2.biplot <- factoextra::fviz_pca_ind(PCA.size,
         axis.text = element_text(size=14))
 
 ggsave(
-  filename = "../output/figures/Figure_6.tiff", 
+  filename = "../output/figures/Figure_7.tiff", 
   width = 8, 
   height = 7,
   units = "in", 
@@ -364,7 +364,7 @@ ggsave(
   )
 )
 ```
-  **Figure 6.** PCA analysis of metric variables. (a) Scree plot dispaying the percentage of variance explained by the first six components. (b) Biplot showing the contribution of the different quantitative variables to the first and second components. (c) Distribution of the mining tools in the PC1 to PC2 space, sorted according to chronological phase.
+  **Figure 7.** PCA analysis of metric variables. (a) Scree plot dispaying the percentage of variance explained by the first six components. (b) Biplot showing the contribution of the different quantitative variables to the first and second components. (c) Distribution of the mining tools in the PC1 to PC2 space, sorted according to chronological phase.
 
 <br>
 
@@ -536,7 +536,7 @@ GM.geomorph.df <- append(GM.geomorph.df, dataset.GM[, 1:15])
 GM.geomorph.df$LogCS <- log10(GM.geomorph.df$Csize)
 ```
 
-### Figure 7
+### Figure 8
 ```{r}
 
 size.data.GM <- mutate(dataset.GM, Csize = GM.geomorph$Csize)
@@ -575,9 +575,9 @@ centroid.plot <- size.data.GM %>%
 
 centroid.plot
 
-ggsave("../output/figures/Figure_7.tiff", plot = centroid.plot, width = 4, height = 3, units = "in", dpi = 300)
+ggsave("../output/figures/Figure_8.tiff", plot = centroid.plot, width = 4, height = 3, units = "in", dpi = 300)
 ```
-  **Figure 7.** Boxplots with jittered points of the log-transformed centroid size across chronological phases at Castle Cavern and Lion Cavern.
+  **Figure 8.** Boxplots with jittered points of the log-transformed centroid size across chronological phases at Castle Cavern and Lion Cavern.
 
 ### Procrustes allometry
 
@@ -621,7 +621,7 @@ Proc.ANOVA.rawmat <- procD.lm(coords ~ raw.material, data=GM.geomorph.df, iter=1
 summary(Proc.ANOVA.rawmat)
 ```
 
-### Figure 8
+### Figure 9
 
 ```{r}
 dataGM <- data.frame(LogCS = log10(GM.geomorph.df$Csize), regsc = RegGM$RegScore, 
@@ -657,9 +657,9 @@ regression.plot <- ggplot(dataGM, aes(x = LogCS, y = regsc)) +
 
 regression.plot
 
-ggsave("../output/figures/Figure_8.tiff", plot = regression.plot, width = 8, height = 5, units = "in", dpi = 300)
+ggsave("../output/figures/Figure_9.tiff", plot = regression.plot, width = 8, height = 5, units = "in", dpi = 300)
 ```
-  **Figure 8.** Linear regression plot comparing shape changes (regression scores) with log-transformed centroid size, with tools sorted according to chronological phase.
+  **Figure 9.** Linear regression plot comparing shape changes (regression scores) with log-transformed centroid size, with tools sorted according to chronological phase.
 
 
 ```{r}
@@ -764,7 +764,7 @@ flextable(correlation_results) %>%
 
 <br>
 
-### Figure 10
+### Figure 11
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 
 dataset.GM.biplot <- dataset.GM %>%
@@ -811,10 +811,10 @@ PC1.PC2_GM <- dataset.GM.biplot %>%
 
 PC1.PC2_GM
 
-ggsave("../output/figures/Figure_10.tiff", plot = PC1.PC2_GM, width = 8, height = 5, units = "in", dpi = 300)
+ggsave("../output/figures/Figure_11.tiff", plot = PC1.PC2_GM, width = 8, height = 5, units = "in", dpi = 300)
 
 ```
-  **Figure 10.** PCA biplot showing the shape variability of the mining tools along PC1 and PC2, sorted by chronological phase. Mean values are represented by triangles, and the confidence ellipses correspond to 80% of the variability.
+  **Figure 11.** PCA biplot showing the shape variability of the mining tools along PC1 and PC2, sorted by chronological phase. Mean values are represented by triangles, and the confidence ellipses correspond to 80% of the variability.
 
 <br>
 
@@ -997,7 +997,7 @@ disparity_df_discrete_pca.plot
 
 <br>
 
-### Figure 11
+### Figure 12
 
 ```{r}
 disparity.figure <- ggarrange(disparity_df_discrete_GM.plot, disparity_df_discrete_pca.plot,
@@ -1005,5 +1005,5 @@ disparity.figure <- ggarrange(disparity_df_discrete_GM.plot, disparity_df_discre
           font.label = list(size = 23, face = "bold"),
           nrow=1)
 
-ggsave("../output/figures/Figure_11.tiff", plot = disparity.figure, width = 14, height = 7, units = "in", dpi = 300)
+ggsave("../output/figures/Figure_12.tiff", plot = disparity.figure, width = 14, height = 7, units = "in", dpi = 300)
 ```
