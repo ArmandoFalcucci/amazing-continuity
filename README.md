@@ -40,5 +40,5 @@ For consistent results, the `renv` package (v. 1.0.3) was used, following the pr
 
 ## Licenses:
 
-- **Code**: MIT License ([https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)), copyright holder: **Armando Falcucci** (2025).
-- **Data and Intellectual Work**: Creative Commons Attribution 4.0 International License ([https://creativecommons.org/licenses/by/4.0/](https://creativecommons.org/licenses/by/4.0/)), copyright holders: **the authors** (2025).
+- **Code**: MIT License ([https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)), copyright holder: **Armando Falcucci** (2026).
+- **Data and Intellectual Work**: Creative Commons Attribution 4.0 International License ([https://creativecommons.org/licenses/by/4.0/](https://creativecommons.org/licenses/by/4.0/)), copyright holders: **the authors** (2026).
