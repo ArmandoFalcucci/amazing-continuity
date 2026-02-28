@@ -1,6 +1,6 @@
 ---
 title: "Supplementary Material for __Amazing continuity of mining technology in the southern African Stone Age__"
-author: "Armando Falcucci, Gunther H. D. Möller, Julia Becher, Bob Forrester, Gregor D. Bader"
+author: "Armando Falcucci, Gunther H. D. Möller, Julia Becher, Bob Forrester, Jörg Linstädter, Gregor D. Bader"
 knit: (function(input, ...) {
     rmarkdown::render(
       input,
